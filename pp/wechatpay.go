@@ -72,9 +72,10 @@ func (pp *WechatPaymentProvider) Pay(r *PayReq) (*PayResp, error) {
 	if strings.HasPrefix(r.PaymentEnv, PaymentEnvWechatMiniProgram) {
 		parts := strings.Split(r.PaymentEnv, ":")
 		if len(parts) > 1 {
+			value := parts[1] 
 			bm.Set("appid", value)
 		}else{
-			bm.Set("appid", value)
+			bm.Set("appid", pp.AppId)
 		}
 	}else{
 		bm.Set("appid", pp.AppId)
