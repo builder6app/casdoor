@@ -69,7 +69,16 @@ func (pp *WechatPaymentProvider) Pay(r *PayReq) (*PayResp, error) {
 	bm := gopay.BodyMap{}
 	desc := joinAttachString([]string{r.ProductDisplayName, r.ProductName, r.ProviderName})
 	bm.Set("attach", desc)
-	bm.Set("appid", pp.AppId)
+	if strings.HasPrefix(r.PaymentEnv, PaymentEnvWechatMiniProgram) {
+		parts := strings.Split(r.PaymentEnv, ":")
+		if len(parts) > 1 {
+			bm.Set("appid", value)
+		}else{
+			bm.Set("appid", value)
+		}
+	}else{
+		bm.Set("appid", pp.AppId)
+	}
 	bm.Set("description", r.ProductDisplayName)
 	bm.Set("notify_url", r.NotifyUrl)
 	bm.Set("out_trade_no", r.PaymentName)
