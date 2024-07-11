@@ -26,6 +26,8 @@ const (
 
 const (
 	PaymentEnvWechatBrowser = "WechatBrowser"
+	PaymentEnvWechatInApp = "InApp";
+	PaymentEnvWechatMiniProgram = "InWechatMiniProgram";
 )
 
 type PayReq struct {

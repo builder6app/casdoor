@@ -14,6 +14,8 @@
 
 package pp
 
+import "strings"
+
 import (
 	"context"
 	"errors"
@@ -76,7 +78,7 @@ func (pp *WechatPaymentProvider) Pay(r *PayReq) (*PayResp, error) {
 		bm.Set("currency", r.Currency)
 	})
 	// In Wechat browser, we use JSAPI
-	if r.PaymentEnv == PaymentEnvWechatBrowser {
+	if r.PaymentEnv == PaymentEnvWechatBrowser || strings.HasPrefix(r.PaymentEnv, PaymentEnvWechatMiniProgram) {
 		if r.PayerId == "" {
 			return nil, errors.New("failed to get the payer's openid, please retry login")
 		}
@@ -90,6 +92,31 @@ func (pp *WechatPaymentProvider) Pay(r *PayReq) (*PayResp, error) {
 		if jsapiRsp.Code != wechat.Success {
 			return nil, errors.New(jsapiRsp.Error)
 		}
+
+		if strings.HasPrefix(r.PaymentEnv, PaymentEnvWechatMiniProgram) {
+			parts := strings.Split(r.PaymentEnv, ":")
+			if len(parts) > 1 {
+				value := parts[1] // 获取分割后的第二部分
+				params, err := pp.Client.PaySignOfApplet(value, jsapiRsp.Response.PrepayId)
+				if err != nil {
+					return nil, err
+				}
+				payResp := &PayResp{
+					PayUrl:  "",
+					OrderId: r.PaymentName, // Wechat can use paymentName as the OutTradeNo to query order status
+					AttachInfo: map[string]interface{}{
+						"appId":     params.AppId,
+						"timeStamp": params.TimeStamp,
+						"nonceStr":  params.NonceStr,
+						"package":   params.Package,
+						"signType":  "RSA",
+						"paySign":   params.PaySign,
+					},
+				}
+				return payResp, nil
+			}
+		}
+
 		// use RSA256 to sign the pay request
 		params, err := pp.Client.PaySignOfJSAPI(pp.AppId, jsapiRsp.Response.PrepayId)
 		if err != nil {
