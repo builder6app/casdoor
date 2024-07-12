@@ -676,7 +676,7 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 	}
 
 	openId, unionId := session.Openid, session.Unionid
-	if openId == "" && unionId == "" {
+	if openId == "" || unionId == "" {
 		return nil, &TokenError{
 			Error:            InvalidRequest,
 			ErrorDescription: "the wechat mini program session is invalid",
@@ -687,10 +687,10 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 		return nil, nil, err
 	}
 
-	var organization *object.Organization
-	organization, err = object.GetOrganization(util.GetId("admin", application.Organization))
+	var organization *Organization
+	organization, err = GetOrganization(util.GetId("admin", application.Organization))
 	if err != nil {
-		c.ResponseError(c.T(err.Error()))
+		return nil, nil, err
 	}
 
 	if user == nil {
@@ -710,11 +710,11 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 
 		user = &User{
 			Owner:             application.Organization,
-			Id:                util.GenerateId(),
+			Id:                unionId,
 			Name:              name,
 			Avatar:            avatar,
 			SignupApplication: application.Name,
-			WeChat:            openId,
+			WeChat:            unionId,
 			Type:              "normal-user",
 			CreatedTime:       util.GetCurrentTime(),
 			IsAdmin:           false,
@@ -736,9 +736,12 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 	// For WeChat, different appId corresponds to different openId
 	extra[BuildWechatOpenIdKey(provider.ClientId)] = openId
 
-	object.SetUserOAuthProperties(organization, user, "WeChat", {
-		Extra: extra
-	})
+	userInfo := idp.UserInfo{
+		Id:    unionId,
+		Extra: extra,
+	}
+
+	SetUserOAuthProperties(organization, user, "WeChat", &userInfo)
 
 	err = ExtendUserWithRolesAndPermissions(user)
 	if err != nil {
