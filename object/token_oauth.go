@@ -647,6 +647,10 @@ func GetTokenByUser(application *Application, user *User, scope string, nonce st
 	return token, nil
 }
 
+func BuildWechatOpenIdKey(appId string) string {
+	return fmt.Sprintf("wechat_openid_%s", appId)
+}
+
 // GetWechatMiniProgramToken
 // Wechat Mini Program flow
 func GetWechatMiniProgramToken(application *Application, code string, host string, username string, avatar string, lang string) (*Token, *TokenError, error) {
@@ -681,6 +685,12 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 	user, err := getUserByWechatId(application.Organization, openId, unionId)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	var organization *object.Organization
+	organization, err = object.GetOrganization(util.GetId("admin", application.Organization))
+	if err != nil {
+		c.ResponseError(c.T(err.Error()))
 	}
 
 	if user == nil {
@@ -720,6 +730,15 @@ func GetWechatMiniProgramToken(application *Application, code string, host strin
 			return nil, nil, err
 		}
 	}
+
+	extra := make(map[string]string)
+	// extra["wechat_unionid"] = wechatUserInfo.Openid
+	// For WeChat, different appId corresponds to different openId
+	extra[BuildWechatOpenIdKey(provider.ClientId)] = openId
+
+	object.SetUserOAuthProperties(organization, user, "WeChat", {
+		Extra: extra
+	})
 
 	err = ExtendUserWithRolesAndPermissions(user)
 	if err != nil {
