@@ -16,6 +16,7 @@ package routers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/beego/beego/context"
 	"github.com/casdoor/casdoor/object"
@@ -69,19 +70,35 @@ func RecordMessage(ctx *context.Context) {
 }
 
 func AfterRecordMessage(ctx *context.Context) {
+	fmt.Println("AfterRecordMessage====>")
 	record, err := object.NewRecord(ctx)
+	fmt.Println("AfterRecordMessage==NewRecord==>")
 	if err != nil {
 		fmt.Printf("AfterRecordMessage() error: %s\n", err.Error())
 		return
 	}
 
+	urlPath := getUrlPath(ctx.Request.URL.Path)
+
+	if strings.HasPrefix(urlPath, "/api/notify-payment") {
+		urlPath = "/api/notify-payment"
+		record.Action = "notify-payment"
+	}
+
+	if strings.HasPrefix(urlPath, "/api/invoice-payment") {
+		urlPath = "/api/invoice-payment"
+		record.Action = "invoice-payment"
+	}
+
 	userId := ctx.Input.Params()["recordUserId"]
+	fmt.Printf("AfterRecordMessage==userId:%s==>\n", userId)
 	if userId != "" {
 		record.Organization, record.User = util.GetOwnerAndNameFromId(userId)
 	}
 
 	var record2 *casvisorsdk.Record
 	recordSignup := ctx.Input.Params()["recordSignup"]
+	fmt.Printf("AfterRecordMessage==recordSignup:%s==>\n", recordSignup)
 	if recordSignup == "true" {
 		record2 = object.CopyRecord(record)
 		record2.Action = "new-user"
@@ -100,11 +117,12 @@ func AfterRecordMessage(ctx *context.Context) {
 
 		record2.Object = util.StructToJson(user)
 	}
-
+	fmt.Printf("AfterRecordMessage==record:%s==>\n", record.Action)
 	util.SafeGoroutine(func() {
 		object.AddRecord(record)
-
+		fmt.Printf("AfterRecordMessage==AddRecord:%s==>\n", record.Action)
 		if record2 != nil {
+			fmt.Printf("AfterRecordMessage==AddRecord2:%s==>\n", record2.Action)
 			object.AddRecord(record2)
 		}
 	})

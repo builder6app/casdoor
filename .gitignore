@@ -34,3 +34,7 @@ server
 
 # include helm-chart
 !manifests/casdoor
+
+aws
+
+awscliv2.zip
